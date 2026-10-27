@@ -13,6 +13,7 @@ from pathlib import Path
 import numpy as np
 import torch
 import yaml
+from joblib import Parallel, delayed
 from PIL import Image
 from torch import nn
 from torch.utils.data import DataLoader, Dataset
@@ -21,6 +22,22 @@ from carbrand.brand_model import BrandHead, BrandNet, make_backbone
 from carbrand.dataset import eval_transform, load_labels, split, train_transform
 from carbrand.evaluate import accuracy, plot_confusion, report
 from carbrand.train_brand import sample_weights
+
+
+def _shrink(src, dst, max_side):
+    if not Path(dst).exists():
+        img = Image.open(src).convert("RGB")
+        img.thumbnail((max_side, max_side), Image.BICUBIC)
+        Path(dst).parent.mkdir(parents=True, exist_ok=True)
+        img.save(dst, quality=95)
+    return dst
+
+
+def shrunk_copies(paths, max_side=320, root="cache/crops_small"):
+    """Decoding full-size crops every epoch was the bottleneck (no worker processes fit in RAM on Windows):
+    resize every crop once so the longest side is max_side (still above the 224 px network input)."""
+    dsts = [str(Path(root) / f"{i:05d}.jpg") for i in range(len(paths))]
+    return Parallel(n_jobs=6, batch_size=64)(delayed(_shrink)(s, d, max_side) for s, d in zip(paths, dsts))
 
 
 class Crops(Dataset):
@@ -63,12 +80,14 @@ def main():
     tr, va = np.flatnonzero(~is_val), np.flatnonzero(is_val)
     own = df.own.to_numpy()
 
+    # cache file names are the row index: a different labels.csv must use a fresh cache folder
+    paths = np.array(shrunk_copies(df.path.tolist(), root=f"cache/crops_small_{len(df)}"))
     w_tr = sample_weights(y_all[tr], own[tr], len(classes), bcfg["own_weight"]).numpy()
     size, bs, nw = fcfg["image_size"], fcfg["batch_size"], fcfg["workers"]
-    train_dl = DataLoader(Crops(df.path.iloc[tr].tolist(), y_all[tr], w_tr, train_transform(size)), bs,
-                          shuffle=True, num_workers=nw, pin_memory=True, drop_last=True, persistent_workers=True)
-    val_dl = DataLoader(Crops(df.path.iloc[va].tolist(), y_all[va], np.ones(len(va), np.float32), eval_transform(size)),
-                        64, num_workers=nw, pin_memory=True, persistent_workers=True) if len(va) else None
+    train_dl = DataLoader(Crops(paths[tr].tolist(), y_all[tr], w_tr, train_transform(size)), bs,
+                          shuffle=True, num_workers=nw, pin_memory=True, drop_last=True, persistent_workers=nw > 0)
+    val_dl = DataLoader(Crops(paths[va].tolist(), y_all[va], np.ones(len(va), np.float32), eval_transform(size)),
+                        64, num_workers=nw, pin_memory=True, persistent_workers=nw > 0) if len(va) else None
 
     head = BrandHead(2 * 384, len(classes), bcfg["hidden"], bcfg["dropout"])
     init = Path(fcfg["init_head"])
@@ -102,7 +121,7 @@ def main():
         model.train()
         model.backbone.blocks[:model.n_frozen].eval()  # frozen part: no dropout/drop-path
         t0, total = time.time(), 0.0
-        for x, y, w in train_dl:
+        for step, (x, y, w) in enumerate(train_dl):
             x, y, w = x.to(device, non_blocking=True), y.to(device), w.to(device)
             with torch.autocast(device_type=device, dtype=torch.float16, enabled=device == "cuda"):
                 loss = (loss_fn(model(x).float(), y) * w).sum() / w.sum()
@@ -112,6 +131,8 @@ def main():
             scaler.update()
             sched.step()
             total += loss.item()
+            if epoch == 0 and step % 25 == 0:
+                print(f"  step {step}/{len(train_dl)}  {time.time() - t0:.0f}s", flush=True)
         msg = f"epoch {epoch + 1:2d}/{fcfg['epochs']}  loss {total / len(train_dl):.3f}  {time.time() - t0:.0f}s"
         score = epoch
         if val_dl is not None:

@@ -29,16 +29,16 @@ brand:
   out: weights/brand_head.pt
 
 finetune:                 # stage B: last blocks of DINOv2 + head, trained end-to-end on augmented images
-  init_head: weights/brand_head.pt   # warm start from the stage-A head
+  init_head: weights/brand_head_split.pt   # warm start: stage-A head trained on the train split only
   unfreeze_blocks: 4      # of 12
   image_size: 224
-  epochs: 12
+  epochs: 8
   batch_size: 32
   lr_head: 3.0e-4
   lr_backbone: 2.0e-5
   weight_decay: 0.05
   warmup_epochs: 1
-  workers: 2              # each Windows worker re-imports torch+CUDA (~1 GB commit): 8 exhausted the page file
+  workers: 0              # each Windows worker re-imports torch+CUDA (~1 GB commit): more than 0 exhausted the page file
   out: weights/brand_stageB.pt
 
 predict:
