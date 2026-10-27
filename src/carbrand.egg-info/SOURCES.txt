@@ -1,0 +1,15 @@
+README.md
+pyproject.toml
+src/carbrand/__init__.py
+src/carbrand/brand_model.py
+src/carbrand/colour_model.py
+src/carbrand/dataset.py
+src/carbrand/detect.py
+src/carbrand/evaluate.py
+src/carbrand/predict.py
+src/carbrand/train_brand.py
+src/carbrand/train_colour.py
+src/carbrand.egg-info/PKG-INFO
+src/carbrand.egg-info/SOURCES.txt
+src/carbrand.egg-info/dependency_links.txt
+src/carbrand.egg-info/top_level.txt

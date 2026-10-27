@@ -1,0 +1,26 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+.ipynb_checkpoints/
+.vscode/
+.idea/
+
+# large data: keep crops + labels.csv in repo (or link), not raw photos/videos
+data/raw/*
+!data/raw/.gitkeep
+*.mp4
+*.mov
+
+# cached features / training runs
+cache/
+runs/
+
+# weights: commit the final small ones explicitly with `git add -f` or use a download link
+weights/*.pt
+weights/*.pth
+!weights/.gitkeep
+
+# downloaded external photos are re-creatable with scripts/fetch_commons.py; keep only their metadata (attribution)
+data/external/**/*.jpg
+data/external/**/*.jpeg
