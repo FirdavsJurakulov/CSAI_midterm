@@ -16,10 +16,8 @@ data/raw/*
 cache/
 runs/
 
-# weights: commit the final small ones explicitly with `git add -f` or use a download link
-weights/*.pt
-weights/*.pth
-!weights/.gitkeep
+# weights are committed (each file < 100 MB, so a clean clone runs without downloads)
+catboost_info/
 
 # downloaded external photos are re-creatable with scripts/fetch_commons.py; keep only their metadata (attribution)
 data/external/**/*.jpg
