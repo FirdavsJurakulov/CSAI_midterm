@@ -27,24 +27,23 @@ ul { margin: 2px 0 5px; padding-left: 18px; }
 <p><b>Repository:</b> <a href="https://github.com/FirdavsJurakulov/CSAI_midterm">https://github.com/FirdavsJurakulov/CSAI_midterm</a> (final commit tagged <code>midterm</code>)</p>
 
 <h2>1. Team, repository and contributions</h2>
-<ul>
-<li><b>Firdavs Jurakulov</b> — <span class="todo">[edit] photo collection (two street sessions, 26 and 27 Oct), labelling and checking of ambiguous cars, training runs, evaluation, report.</span></li>
-<li><b class="todo">[Member 2 name]</b> — <span class="todo">[edit: what they did — e.g. photo collection, label checking, test-day rehearsal, report sections].</span></li>
-</ul>
+<p><b>Team:</b> Firdavs Jurakulov (individual submission). All work was done by me: photo collection (two street sessions, 26 and 27 Oct),
+labelling and checking of every car including the ambiguous ones, choice of architecture, training runs, evaluation, test-day rehearsal and this report,
+with the AI assistance described in Section 7.</p>
 <p>The repository contains all code (crop extraction, Commons crawler, label merge, training of both models, evaluation, inference), the label file, all crops and masks, and all weights.</p>
 
 <h2>2. Data</h2>
-<p><b>Brands.</b> 41 brand labels: the 24 brands named in the brief, plus Chevrolet's local predecessor Daewoo, Lada, and the Chinese brands we
+<p><b>Brands.</b> 41 brand labels: the 24 brands named in the brief, plus Chevrolet's local predecessor Daewoo, Lada, and the Chinese brands I
 actually met in the streets and car parks (Aion, Deepal, AITO, Voyah, Dongfeng, Tank, Xiaomi, GAC, Denza, Seres, Stelato, Avatr, Venucia, GWM) and a few
 others (Porsche, Tesla, Genesis). Brand = the badge, named in English (Lixiang → Li Auto). 30 brands have 76–439 cars each; the last 11 have only 1–6 cars
 (own photos only) and are effectively unseen by the model.</p>
-<p><b>Sources.</b> (1) <b>Own photos</b>: 192 phone photos of Tashkent streets and car parks taken by the team on 26–27 Oct (day and evening, all angles),
+<p><b>Sources.</b> (1) <b>Own photos</b>: 192 phone photos of Tashkent streets and car parks taken by me on 26–27 Oct (day and evening, all angles),
 433 labelled cars. The second session targeted new residential complexes and dealer streets to find Chinese brands.
-(2) <b>Wikimedia Commons</b> (CC BY / CC BY-SA, public domain): 4,893 cars downloaded with our crawler <code>scripts/fetch_commons.py</code> via the public MediaWiki API,
-one car per photo; author, licence and URL of every file are kept in <code>data/external/*/metadata.csv</code>. We used Commons rather than Stanford Cars / CompCars
+(2) <b>Wikimedia Commons</b> (CC BY / CC BY-SA, public domain): 4,893 cars downloaded with my crawler <code>scripts/fetch_commons.py</code> via the public MediaWiki API,
+one car per photo; author, licence and URL of every file are kept in <code>data/external/*/metadata.csv</code>. I used Commons rather than Stanford Cars / CompCars
 because those sets contain almost none of the 2022–2026 Chinese models that dominate Tashkent today.</p>
 <p><b>Labelling.</b> Each photo goes through the detector (<code>scripts/extract_crops.py</code>), which saves one crop + mask per car. Own crops were labelled by hand
-(brand from the badge; colour as a person would name it in daylight); crops with an unreadable badge were shown as a contact sheet and labelled by the team
+(brand from the badge; colour as a person would name it in daylight); crops with an unreadable badge were shown as a contact sheet and labelled by me
 (48 ambiguous cars on 27 Oct), unidentifiable / tiny / blurry cars were left out, as were crops showing faces. Commons crops take the brand from the
 Commons category; colour from the file's colour category when present (2,351 Commons crops have no colour label and are used for brand only).
 Noisy Commons files (interiors, logos, old joint-venture models, trucks) are removed by filename rules and by detector class/confidence.
@@ -127,25 +126,25 @@ Commons by file (15%). Result: 4,468 train / 858 validation crops (123 own). Fin
 <text x="425" y="143" text-anchor="middle">whole mask + lower body band (100-d)</text><text x="425" y="158" text-anchor="middle">→ gradient-boosted trees (8 classes)</text>
 <text x="665" y="82" text-anchor="middle" font-weight="600">List, left → right</text><text x="665" y="97" text-anchor="middle">"BYD white; Chevrolet grey"</text>
 </svg>
-<p><b>Multi-car strategy: detector + per-car classifier.</b> Scoring is per car and every extra prediction costs a point, so we need exactly one prediction per
+<p><b>Multi-car strategy: detector + per-car classifier.</b> Scoring is per car and every extra prediction costs a point, so the pipeline needs exactly one prediction per
 car and explicit control over which cars are reported. A COCO-pretrained YOLO11s-seg (used as-is, not a car-brand model) finds the cars; small or
 low-confidence detections are dropped (thresholds in <code>configs/default.yaml</code>).</p>
-<p><b>Brand: DINOv2 ViT-S/14 (self-supervised ViT, 21.6 M parameters), trained by us in two stages.</b> Crops are letterboxed (padded, not centre-cropped, because
+<p><b>Brand: DINOv2 ViT-S/14 (self-supervised ViT, 21.6 M parameters), trained by me in two stages.</b> Crops are letterboxed (padded, not centre-cropped, because
 cars are wide) to 224 px. Embedding = CLS token concatenated with the mean of the patch tokens (768-d), the standard DINOv2 linear-probe recipe.
 <i>Stage A</i>: backbone frozen, features cached once (original + mirrored), only the MLP head is trained (0.83 M parameters, 13 s).
 <i>Stage B</i>: the last 4 of 12 transformer blocks + final norm are fine-tuned together with the head (7.9 M trainable parameters) on augmented images;
 the frozen first 8 blocks run without gradients so this fits a 4 GB GPU. Stage B replaces stage A only if it is better on validation.</p>
-<p><b>Colour: our own non-neural model.</b> DINOv2 is trained with colour-jitter augmentation, so its features are partly colour-blind; a separate model on
+<p><b>Colour: my own non-neural model.</b> DINOv2 is trained with colour-jitter augmentation, so its features are partly colour-blind; a separate model on
 explicit colour statistics is more reliable and easy to explain. Only pixels inside the (eroded) YOLO mask are used, so road, sky and other cars do not leak in.
 Windows, tyres and shadows are dark in every car, so features are computed twice — on the whole mask and on its lower-middle band (doors, mostly paint):
 saturation-weighted hue histogram of coloured pixels (18 bins), saturation and value histograms (8+8), colourful-pixel fraction, Lab mean/std/percentiles.
 A HistGradientBoosting classifier (class-balanced, own photos weighted ×3) maps the 100 features to the 8 colours.</p>
 <p><b>Size and speed.</b> YOLO11s-seg 10.1 M + DINOv2 21.6 M + head 0.8 M parameters; colour model ≈ 10 MB of trees.
 About 1 s per photo on a GTX 1650 laptop GPU, a few seconds on CPU, fully offline (all weights in the repository).</p>
-<p><b>Why this design.</b> DINOv2 features are strong for fine-grained, few-shot recognition, which suits ~100–200 cars per brand; ViT-S fits our 4 GB GPU.
-Stage A gives a working baseline in seconds; stage B is the improvement that has to beat it. We also compared heads on the same frozen features (table below):
+<p><b>Why this design.</b> DINOv2 features are strong for fine-grained, few-shot recognition, which suits ~100–200 cars per brand; ViT-S fits my 4 GB GPU.
+Stage A gives a working baseline in seconds; stage B is the improvement that has to beat it. I also compared heads on the same frozen features (table below):
 the MLP clearly beats logistic regression, kNN and gradient boosting (XGBoost, CatBoost, LightGBM). Trees split on one feature at a time, which suits
-hand-made tabular features (we do use them for colour) but not dense 768-d embeddings in which the information is spread over many dimensions.</p>
+hand-made tabular features (I do use them for colour) but not dense 768-d embeddings in which the information is spread over many dimensions.</p>
 <table>
 <tr><th>Head on frozen DINOv2 features (26 Oct split, 788 val crops)</th><th>Val acc.</th><th>Own photos</th><th>Macro-F1</th><th>Train time</th></tr>
 <tr><td>MLP head (ours)</td><td><b>0.666</b></td><td>0.774</td><td><b>0.651</b></td><td>11 s</td></tr>
@@ -185,15 +184,15 @@ a few pixels at 224 px), Kia ↔ Hyundai (shared platforms), Mercedes ↔ Daewoo
 Daewoo → Chevrolet. Toyota, Hyundai and Kia (F1 ≈ 0.40) suffer from very different model generations under one badge.</p>
 <p><b>Chinese brands.</b> Half of the test is Chinese brands, and they are the hardest part. (1) <i>Group families look alike</i>: Chery, Jetour, Exeed, Omoda and Jaecoo
 are all Chery Group; Haval and Tank are Great Wall; Changan, Deepal and Avatr are Changan; Dongfeng and Voyah; Geely and Zeekr. Shared platforms, lamps and
-proportions make Haval → Jetour, Geely → Dongfeng and Chery → Jetour/Exeed our most frequent Chinese confusions; Haval (0.38), Geely (0.40), Chery (0.43) and JAC (0.29)
-are our weakest brands. (2) <i>Generic modern SUV design</i>: from the side or rear, many 2023–2025 crossovers differ mainly in the badge and lamp signature.
-(3) <i>Data</i>: most Chinese-brand examples come from Commons (photographed in China, often older facelifts), while our own photos contain only 1–11 cars
-for most Chinese brands and none for Geely, Haval, JAC, Exeed, Omoda, Jaecoo, Tank. Our second photo session (27 Oct) targeted this gap and added
+proportions make Haval → Jetour, Geely → Dongfeng and Chery → Jetour/Exeed the most frequent Chinese confusions; Haval (0.38), Geely (0.40), Chery (0.43) and JAC (0.29)
+are the weakest brands. (2) <i>Generic modern SUV design</i>: from the side or rear, many 2023–2025 crossovers differ mainly in the badge and lamp signature.
+(3) <i>Data</i>: most Chinese-brand examples come from Commons (photographed in China, often older facelifts), while my own photos contain only 1–11 cars
+for most Chinese brands and none for Geely, Haval, JAC, Exeed, Omoda, Jaecoo, Tank. My second photo session (27 Oct) targeted this gap and added
 the first local examples of Zeekr, Leapmotor, Li Auto, AITO, Hongqi, Chery and Xiaomi. (4) Brands seen only 1–6 times (Xiaomi, GAC, Denza, Stelato, Avatr…)
 cannot be learnt yet; on test day they will receive a wrong brand but can still earn the colour share. Stage B targets (1)–(2): fine-tuning lets the
 backbone attend to badges, grilles and lamp shapes instead of generic body shape.</p>
 <p><b>Own phone-camera tests.</b> <span class="todo">[fill in after the rehearsal: N photos of cars shown on a screen, photographed with the phone, transferred and predicted;
-time per photo; how many cars right for brand / colour; extra predictions].</span> On four of our street photos the full pipeline took 0.5–1.8 s per photo.</p>
+time per photo; how many cars right for brand / colour; extra predictions].</span> On four of my street photos the full pipeline took 0.5–1.8 s per photo.</p>
 
 <h2>6. How to run on test day</h2>
 <pre>git clone https://github.com/FirdavsJurakulov/CSAI_midterm.git &amp;&amp; cd CSAI_midterm
@@ -206,14 +205,14 @@ python -m carbrand.predict incoming/photo.jpg</pre>
 </ol>
 
 <h2>7. Reflection and AI-use statement</h2>
-<p><b>With two more weeks</b> we would (1) photograph a few hundred more cars per Chinese brand in Tashkent, especially Haval, Geely, Chery, Jetour, Exeed, Omoda/Jaecoo and JAC,
-for which we have no or almost no own photos, and the newer brands (Xiaomi, GAC, Denza, Avatr); (2) fine-tune at 336 px or train a second-stage classifier on a
+<p><b>With two more weeks</b> I would (1) photograph a few hundred more cars per Chinese brand in Tashkent, especially Haval, Geely, Chery, Jetour, Exeed, Omoda/Jaecoo and JAC,
+for which I have no or almost no own photos, and the newer brands (Xiaomi, GAC, Denza, Avatr); (2) fine-tune at 336 px or train a second-stage classifier on a
 zoomed badge/grille region so the badge becomes readable; (3) tune the detector thresholds on a set of real multi-car test-style photos taken off a screen;
 (4) label colour for the Commons crops that have none and collect more beige/brown and grey cars.</p>
-<p><b>AI use.</b> We used <b>Claude Code (Anthropic)</b> as a coding assistant throughout the project: to propose and discuss the architecture, write and debug the
-Python code (crop extraction, Wikimedia Commons crawler, training, colour model, inference script), suggest first-pass labels for our own crops (every label was
-checked and the 48 ambiguous cars were labelled by us), run the training, and draft this report, which we then edited. All design decisions, data collection,
-final labels and the results were reviewed by us, and we can explain every part of the pipeline. No AI tools are used during the live test.
+<p><b>AI use.</b> I used <b>Claude Code (Anthropic)</b> as a coding assistant throughout the project: to propose and discuss the architecture, write and debug the
+Python code (crop extraction, Wikimedia Commons crawler, training, colour model, inference script), suggest first-pass labels for my own crops (every label was
+checked and the 48 ambiguous cars were labelled by me), run the training, and draft this report, which I then edited. All design decisions, data collection,
+final labels and the results were reviewed by me, and I can explain every part of the pipeline. No AI tools are used during the live test.
 <span class="todo">[edit if you used other tools]</span></p>
 <p class="small"><b>Data credit:</b> Wikimedia Commons contributors (individual authors and licences listed per file in <code>data/external/*/metadata.csv</code>).
 Pretrained weights: DINOv2 (Oquab et al., 2023, Meta AI; via timm), YOLO11 (Ultralytics, COCO).</p>
