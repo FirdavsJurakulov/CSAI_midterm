@@ -42,9 +42,45 @@ def letterbox(img, size=224, fill=(124, 116, 104)):
     return canvas
 
 
+class Letterbox:
+    """Picklable (DataLoader workers on Windows) wrapper around letterbox()."""
+    def __init__(self, size):
+        self.size = size
+
+    def __call__(self, img):
+        return letterbox(img.convert("RGB"), self.size)
+
+
+class RandomSubCrop:
+    """Keep a random 85-100% window of the crop: imitates the detector's box jitter."""
+    def __init__(self, min_frac=0.85):
+        self.min_frac = min_frac
+
+    def __call__(self, img):
+        w, h = img.size
+        cw, ch = (round(d * np.random.uniform(self.min_frac, 1.0)) for d in (w, h))
+        x, y = np.random.randint(0, w - cw + 1), np.random.randint(0, h - ch + 1)
+        return img.crop((x, y, x + cw, y + ch))
+
+
 def eval_transform(size=224):
     return transforms.Compose([
-        transforms.Lambda(lambda im: letterbox(im.convert("RGB"), size)),
+        Letterbox(size),
+        transforms.ToTensor(),
+        transforms.Normalize(MEAN, STD),
+    ])
+
+
+def train_transform(size=224):
+    """Brand-preserving augmentation: geometry jitter, lighting, blur (phone photos of a screen are soft)."""
+    return transforms.Compose([
+        RandomSubCrop(0.85),
+        Letterbox(size),
+        transforms.RandomHorizontalFlip(),
+        transforms.RandomApply([transforms.RandomPerspective(0.15, p=1.0, fill=(124, 116, 104))], p=0.3),
+        transforms.ColorJitter(0.35, 0.35, 0.25, 0.05),
+        transforms.RandomGrayscale(0.05),
+        transforms.RandomApply([transforms.GaussianBlur(5, sigma=(0.1, 1.5))], p=0.3),
         transforms.ToTensor(),
         transforms.Normalize(MEAN, STD),
     ])

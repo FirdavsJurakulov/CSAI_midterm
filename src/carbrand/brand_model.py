@@ -31,3 +31,32 @@ class BrandHead(nn.Module):
 
     def forward(self, f):
         return self.net(f)
+
+
+class BrandNet(nn.Module):
+    """Stage B: backbone with only its last `unfreeze_blocks` blocks trainable, plus the head.
+
+    The frozen prefix runs under no_grad, so its activations are not stored: this is what fits a 4 GB GPU.
+    """
+    def __init__(self, backbone, head, unfreeze_blocks=4):
+        super().__init__()
+        self.backbone, self.head = backbone, head
+        self.n_frozen = len(backbone.blocks) - unfreeze_blocks
+        for p in backbone.parameters():
+            p.requires_grad = False
+        for p in [*backbone.blocks[self.n_frozen:].parameters(), *backbone.norm.parameters()]:
+            p.requires_grad = True
+
+    def features(self, x):
+        b = self.backbone
+        with torch.no_grad():
+            x = b.norm_pre(b.patch_drop(b._pos_embed(b.patch_embed(x))))
+            for blk in b.blocks[:self.n_frozen]:
+                x = blk(x)
+        for blk in b.blocks[self.n_frozen:]:
+            x = blk(x)
+        x = b.norm(x)
+        return torch.cat([x[:, 0], x[:, b.num_prefix_tokens:].mean(dim=1)], dim=1)
+
+    def forward(self, x):
+        return self.head(self.features(x))

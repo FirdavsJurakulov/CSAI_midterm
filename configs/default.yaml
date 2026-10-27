@@ -28,6 +28,26 @@ brand:
   label_smoothing: 0.1
   out: weights/brand_head.pt
 
+finetune:                 # stage B: last blocks of DINOv2 + head, trained end-to-end on augmented images
+  init_head: weights/brand_head.pt   # warm start from the stage-A head
+  unfreeze_blocks: 4      # of 12
+  image_size: 224
+  epochs: 12
+  batch_size: 32
+  lr_head: 3.0e-4
+  lr_backbone: 2.0e-5
+  weight_decay: 0.05
+  warmup_epochs: 1
+  workers: 2              # each Windows worker re-imports torch+CUDA (~1 GB commit): 8 exhausted the page file
+  out: weights/brand_stageB.pt
+
+predict:
+  detector: weights/yolo11s-seg.pt
+  backbone_weights: weights/dinov2_vits14.pt   # local copy of the pretrained backbone, for offline stage-A use
+  det_conf: 0.5           # every extra prediction costs -1: only confident detections
+  min_area_frac: 0.01     # ignore tiny background cars
+  pad: 0.08               # same padding as the training crops
+
 colour:
   classes: [white, black, grey, red, blue, green, brown, yellow]
   hist_bins: {h: 18, s: 8, v: 8}
