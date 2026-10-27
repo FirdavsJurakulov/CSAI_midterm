@@ -133,7 +133,7 @@ low-confidence detections are dropped (thresholds in <code>configs/default.yaml<
 cars are wide) to 224 px. Embedding = CLS token concatenated with the mean of the patch tokens (768-d), the standard DINOv2 linear-probe recipe.
 <i>Stage A</i>: backbone frozen, features cached once (original + mirrored), only the MLP head is trained (0.83 M parameters, 13 s).
 <i>Stage B</i>: the last 4 of 12 transformer blocks + final norm are fine-tuned together with the head (7.9 M trainable parameters) on augmented images;
-the frozen first 8 blocks run without gradients so this fits a 4 GB GPU. Stage B replaces stage A only if it is better on validation.</p>
+the frozen first 8 blocks run without gradients so this fits a 4 GB GPU. Stage B replaces stage A only if it is better on validation — it is: 0.718 vs 0.668 overall, 0.772 vs 0.748 on own photos.</p>
 <p><b>Colour: my own non-neural model.</b> DINOv2 is trained with colour-jitter augmentation, so its features are partly colour-blind; a separate model on
 explicit colour statistics is more reliable and easy to explain. Only pixels inside the (eroded) YOLO mask are used, so road, sky and other cars do not leak in.
 Windows, tyres and shadows are dark in every car, so features are computed twice — on the whole mask and on its lower-middle band (doors, mostly paint):
@@ -161,7 +161,7 @@ hand-made tabular features (I do use them for colour) but not dense 768-d embedd
 <li><b>Stage A:</b> AdamW, lr 1e-3, weight decay 0.05, cosine schedule, 100 epochs, batch 256, dropout 0.5, hidden 1024. Augmentation: horizontal mirror (cached). 13 s after a one-off 3 min feature extraction.</li>
 <li><b>Stage B:</b> AdamW, lr 2e-5 for the backbone blocks and 3e-4 for the head (warm-started from stage A), 1 warm-up epoch then cosine, 8 epochs, batch 32, mixed precision (fp16).
 Augmentation: random 85–100 % sub-crop (detector box jitter), mirror, perspective (p = 0.3), colour jitter, 5 % greyscale, Gaussian blur (p = 0.3, phone photos of a screen are soft).
-<span class="todo">[time per epoch / total]</span>.</li>
+≈ 5 min per epoch on the GTX 1650 (GPU-bound); validation accuracy by epoch 0.579, 0.634, 0.653, 0.657, 0.718. Training was stopped after epoch 5 of 8 because of the deadline (≈ 27 min); the epoch-5 checkpoint (trained on the train split only) is the test-day brand model.</li>
 <li><b>Colour:</b> HistGradientBoosting, 400 iterations, lr 0.05, 31 leaves, L2 1.0, balanced classes, own photos ×3. Trains in seconds.</li>
 <li><b>Hardware:</b> laptop, NVIDIA GTX 1650 4 GB, 16 GB RAM, Windows 11, Python 3.11, PyTorch 2.11 + CUDA 12.6, timm, Ultralytics.</li>
 </ul>
@@ -170,7 +170,7 @@ Augmentation: random 85–100 % sub-crop (detector box jitter), mirror, perspect
 <table>
 <tr><th>Validation (858 crops, 123 own)</th><th>All</th><th>Own Tashkent photos</th><th>Commons</th></tr>
 <tr><td>Brand, stage A (frozen + MLP)</td><td>0.668</td><td>0.748</td><td>0.654</td></tr>
-<tr class="todo"><td>Brand, stage B (fine-tuned last 4 blocks)</td><td>[ ]</td><td>[ ]</td><td>[ ]</td></tr>
+<tr><td><b>Brand, stage B (fine-tuned last 4 blocks) — used on test day</b></td><td><b>0.718</b></td><td><b>0.772</b></td><td><b>0.709</b></td></tr>
 <tr><td>Colour (504 colour-labelled crops)</td><td>0.780</td><td>0.732</td><td>0.795</td></tr>
 </table>
 <p><b>Colour per class (F1):</b> red 0.92, green 0.89, white 0.88, black 0.80, yellow 0.72, blue 0.66, grey 0.60, brown 0.30. Grey/silver is confused with white
