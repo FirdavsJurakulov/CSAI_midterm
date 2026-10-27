@@ -193,8 +193,13 @@ cannot be learnt yet; on test day they will receive a wrong brand but can still 
 backbone attend to badges, grilles and lamp shapes instead of generic body shape, and it helped most exactly on the Chinese brands (F1, stage A → B):
 Haval 0.38 → 0.61, JAC 0.29 → 0.51, Changan 0.69 → 0.85, Exeed 0.75 → 0.90, Jetour 0.61 → 0.67, Geely 0.40 → 0.48; Chery stays weak (0.43 → 0.40),
 confused with its own sub-brands. Kia/Hyundai (0.49/0.43) and Daewoo/Chevrolet remain the main non-Chinese errors.</p>
-<p><b>Own phone-camera tests.</b> <span class="todo">[fill in after the rehearsal: N photos of cars shown on a screen, photographed with the phone, transferred and predicted;
-time per photo; how many cars right for brand / colour; extra predictions].</span> On four of my street photos the full pipeline took 0.5–1.8 s per photo.</p>
+<p><b>Own phone-camera tests.</b> The whole test-day pipeline (<code>python -m carbrand.predict</code>) was run on the 54 own street photos of the
+validation split (123 labelled cars; none of them used to train the stage-B brand model or the colour model used here) and scored with the exam rule
+(<code>scripts/score_photo.py</code>: best pairing, 0.6 brand / 0.4 colour per car, −1 per extra prediction). Result: <b>138.4 / 270 points (2.56 per photo, 51 %)</b>;
+84 of 123 brands and 86 of 123 colours right; 0.48 s per photo on average (0.1–1.3 s), far inside the 2-minute limit. The largest loss is 48 extra predictions:
+background cars the detector finds but that are not in my reference list. Stricter detector thresholds (box ≥ 2, 3 or 5 % of the photo, confidence 0.7)
+removed more real cars than extra ones and scored lower (122.3, 114.2, 82.6 points), so the defaults (≥ 1 %, confidence 0.5) are kept. The real test
+reference may include more of the small cars, which would turn some of these "extras" into scored cars.</p>
 
 <h2>6. How to run on test day</h2>
 <pre>git clone https://github.com/FirdavsJurakulov/CSAI_midterm.git &amp;&amp; cd CSAI_midterm
@@ -214,8 +219,7 @@ zoomed badge/grille region so the badge becomes readable; (3) tune the detector 
 <p><b>AI use.</b> I used <b>Claude Code (Anthropic)</b> as a coding assistant throughout the project: to propose and discuss the architecture, write and debug the
 Python code (crop extraction, Wikimedia Commons crawler, training, colour model, inference script), suggest first-pass labels for my own crops (every label was
 checked and the 48 ambiguous cars were labelled by me), run the training, and draft this report, which I then edited. All design decisions, data collection,
-final labels and the results were reviewed by me, and I can explain every part of the pipeline. No AI tools are used during the live test.
-<span class="todo">[edit if you used other tools]</span></p>
+final labels and the results were reviewed by me, and I can explain every part of the pipeline. No AI tools are used during the live test. No other AI tools were used.</p>
 <p class="small"><b>Data credit:</b> Wikimedia Commons contributors (individual authors and licences listed per file in <code>data/external/*/metadata.csv</code>).
 Pretrained weights: DINOv2 (Oquab et al., 2023, Meta AI; via timm), YOLO11 (Ultralytics, COCO).</p>
 </body></html>
