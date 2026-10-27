@@ -161,7 +161,7 @@ hand-made tabular features (I do use them for colour) but not dense 768-d embedd
 <li><b>Stage A:</b> AdamW, lr 1e-3, weight decay 0.05, cosine schedule, 100 epochs, batch 256, dropout 0.5, hidden 1024. Augmentation: horizontal mirror (cached). 13 s after a one-off 3 min feature extraction.</li>
 <li><b>Stage B:</b> AdamW, lr 2e-5 for the backbone blocks and 3e-4 for the head (warm-started from stage A), 1 warm-up epoch then cosine, 8 epochs, batch 32, mixed precision (fp16).
 Augmentation: random 85–100 % sub-crop (detector box jitter), mirror, perspective (p = 0.3), colour jitter, 5 % greyscale, Gaussian blur (p = 0.3, phone photos of a screen are soft).
-≈ 5 min per epoch on the GTX 1650 (GPU-bound); validation accuracy by epoch 0.579, 0.634, 0.653, 0.657, 0.718. Training was stopped after epoch 5 of 8 because of the deadline (≈ 27 min); the epoch-5 checkpoint (trained on the train split only) is the test-day brand model.</li>
+≈ 5 min per epoch on the GTX 1650 (GPU-bound); validation accuracy by epoch 0.579, 0.634, 0.653, 0.657, <b>0.718</b>, 0.702, 0.718, 0.711 (≈ 41 min in total; epochs 6–8 were resumed from the epoch-5 checkpoint with <code>--resume</code>). The best checkpoint, epoch 5 (trained on the train split only), is the test-day brand model.</li>
 <li><b>Colour:</b> HistGradientBoosting, 400 iterations, lr 0.05, 31 leaves, L2 1.0, balanced classes, own photos ×3. Trains in seconds.</li>
 <li><b>Hardware:</b> laptop, NVIDIA GTX 1650 4 GB, 16 GB RAM, Windows 11, Python 3.11, PyTorch 2.11 + CUDA 12.6, timm, Ultralytics.</li>
 </ul>
@@ -175,7 +175,7 @@ Augmentation: random 85–100 % sub-crop (detector box jitter), mirror, perspect
 </table>
 <p><b>Colour per class (F1):</b> red 0.92, green 0.89, white 0.88, black 0.80, yellow 0.72, blue 0.66, grey 0.60, brown 0.30. Grey/silver is confused with white
 (bright reflections) and with black (shadows, evening photos); brown/beige is rare (85 cars) and sits between grey, white and yellow.</p>
-<figure><img src="figures/brand_confusion_stageA.png" style="width:74%"><figcaption>Row-normalised brand confusion matrix, stage A, validation split (numbers are counts).</figcaption></figure>
+<figure><img src="figures/brand_confusion_stageB.png" style="width:74%"><figcaption>Row-normalised brand confusion matrix, stage B (test-day model), validation split (numbers are counts).</figcaption></figure>
 
 <h3>Error analysis</h3>
 <p><b>Best brands</b> (F1 ≥ 0.85): BMW, Tank, Zeekr, Deepal, Li Auto, Jaecoo — each has a very distinctive front (kidney grille, boxy Tank body, Zeekr light bar,
@@ -190,7 +190,9 @@ are the weakest brands. (2) <i>Generic modern SUV design</i>: from the side or r
 for most Chinese brands and none for Geely, Haval, JAC, Exeed, Omoda, Jaecoo, Tank. My second photo session (27 Oct) targeted this gap and added
 the first local examples of Zeekr, Leapmotor, Li Auto, AITO, Hongqi, Chery and Xiaomi. (4) Brands seen only 1–6 times (Xiaomi, GAC, Denza, Stelato, Avatr…)
 cannot be learnt yet; on test day they will receive a wrong brand but can still earn the colour share. Stage B targets (1)–(2): fine-tuning lets the
-backbone attend to badges, grilles and lamp shapes instead of generic body shape.</p>
+backbone attend to badges, grilles and lamp shapes instead of generic body shape, and it helped most exactly on the Chinese brands (F1, stage A → B):
+Haval 0.38 → 0.61, JAC 0.29 → 0.51, Changan 0.69 → 0.85, Exeed 0.75 → 0.90, Jetour 0.61 → 0.67, Geely 0.40 → 0.48; Chery stays weak (0.43 → 0.40),
+confused with its own sub-brands. Kia/Hyundai (0.49/0.43) and Daewoo/Chevrolet remain the main non-Chinese errors.</p>
 <p><b>Own phone-camera tests.</b> <span class="todo">[fill in after the rehearsal: N photos of cars shown on a screen, photographed with the phone, transferred and predicted;
 time per photo; how many cars right for brand / colour; extra predictions].</span> On four of my street photos the full pipeline took 0.5–1.8 s per photo.</p>
 

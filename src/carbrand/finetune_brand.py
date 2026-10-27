@@ -66,6 +66,8 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--config", default="configs/default.yaml")
     ap.add_argument("--final", action="store_true", help="train on all data (no validation)")
+    ap.add_argument("--resume", action="store_true",
+                    help="continue from the saved checkpoint at its epoch (optimizer moments restart)")
     args = ap.parse_args()
     cfg = yaml.safe_load(open(args.config))
     bcfg, dcfg, fcfg = cfg["brand"], cfg["data"], cfg["finetune"]
@@ -117,7 +119,18 @@ def main():
     out = Path(fcfg["out"])
     out.parent.mkdir(parents=True, exist_ok=True)
     best, y_va, own_va = -1.0, y_all[va], own[va]
-    for epoch in range(fcfg["epochs"]):
+    start = 0
+    if args.resume:
+        ck = torch.load(out, map_location="cpu")
+        assert ck["classes"] == classes and ck["final"] == args.final, "checkpoint does not match this run"
+        model.load_state_dict(ck["model"])
+        start = ck["epoch"]
+        for _ in range(start * len(train_dl)):  # put the warm-up/cosine schedule where it was
+            sched.step()
+        if val_dl is not None:
+            best = accuracy(y_va, predict(model, val_dl, device))
+        print(f"resumed from {out} after epoch {start} (val {best:.3f})", flush=True)
+    for epoch in range(start, fcfg["epochs"]):
         model.train()
         model.backbone.blocks[:model.n_frozen].eval()  # frozen part: no dropout/drop-path
         t0, total = time.time(), 0.0
@@ -131,7 +144,7 @@ def main():
             scaler.update()
             sched.step()
             total += loss.item()
-            if epoch == 0 and step % 25 == 0:
+            if epoch == start and step % 25 == 0:
                 print(f"  step {step}/{len(train_dl)}  {time.time() - t0:.0f}s", flush=True)
         msg = f"epoch {epoch + 1:2d}/{fcfg['epochs']}  loss {total / len(train_dl):.3f}  {time.time() - t0:.0f}s"
         score = epoch
