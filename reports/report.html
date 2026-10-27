@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>CSAI-3210 Midterm Report</title>
+<style>
+@page { size: A4; margin: 14mm 14mm 14mm 14mm; }
+body { font-family: "Segoe UI", Arial, sans-serif; font-size: 9.6pt; line-height: 1.38; color: #111; }
+h1 { font-size: 15pt; margin: 0 0 2px; }
+h2 { font-size: 11.5pt; margin: 11px 0 4px; border-bottom: 1px solid #bbb; padding-bottom: 1px; }
+h3 { font-size: 10pt; margin: 7px 0 2px; }
+p { margin: 3px 0 5px; }
+table { border-collapse: collapse; font-size: 8.3pt; margin: 4px 0 6px; }
+th, td { border: 1px solid #ccc; padding: 1px 5px; text-align: right; }
+th:first-child, td:first-child { text-align: left; }
+th { background: #f0f0f0; }
+.cols { display: flex; gap: 14px; align-items: flex-start; }
+.small { font-size: 8.2pt; color: #333; }
+.todo { background: #fff3b0; }
+figure { margin: 4px 0; text-align: center; }
+figcaption { font-size: 8pt; color: #444; }
+code { font-family: Consolas, monospace; font-size: 8.6pt; background: #f4f4f4; padding: 0 2px; }
+pre { font-family: Consolas, monospace; font-size: 8.4pt; background: #f4f4f4; padding: 4px 6px; margin: 3px 0; }
+ul { margin: 2px 0 5px; padding-left: 18px; }
+.pb { page-break-before: always; }
+</style></head><body>
+
+<h1>Car Brand &amp; Colour Classification in Tashkent</h1>
+<p>CSAI-3210 Introduction to AI — Midterm report, Fall 2026, Webster University in Tashkent</p>
+<p><b>Repository:</b> <a href="https://github.com/FirdavsJurakulov/CSAI_midterm">https://github.com/FirdavsJurakulov/CSAI_midterm</a> (final commit tagged <code>midterm</code>)</p>
+
+<h2>1. Team, repository and contributions</h2>
+<ul>
+<li><b>Firdavs Jurakulov</b> — <span class="todo">[edit] photo collection (two street sessions, 26 and 27 Oct), labelling and checking of ambiguous cars, training runs, evaluation, report.</span></li>
+<li><b class="todo">[Member 2 name]</b> — <span class="todo">[edit: what they did — e.g. photo collection, label checking, test-day rehearsal, report sections].</span></li>
+</ul>
+<p>The repository contains all code (crop extraction, Commons crawler, label merge, training of both models, evaluation, inference), the label file, all crops and masks, and all weights.</p>
+
+<h2>2. Data</h2>
+<p><b>Brands.</b> 41 brand labels: the 24 brands named in the brief, plus Chevrolet's local predecessor Daewoo, Lada, and the Chinese brands we
+actually met in the streets and car parks (Aion, Deepal, AITO, Voyah, Dongfeng, Tank, Xiaomi, GAC, Denza, Seres, Stelato, Avatr, Venucia, GWM) and a few
+others (Porsche, Tesla, Genesis). Brand = the badge, named in English (Lixiang → Li Auto). 30 brands have 76–439 cars each; the last 11 have only 1–6 cars
+(own photos only) and are effectively unseen by the model.</p>
+<p><b>Sources.</b> (1) <b>Own photos</b>: 192 phone photos of Tashkent streets and car parks taken by the team on 26–27 Oct (day and evening, all angles),
+433 labelled cars. The second session targeted new residential complexes and dealer streets to find Chinese brands.
+(2) <b>Wikimedia Commons</b> (CC BY / CC BY-SA, public domain): 4,893 cars downloaded with our crawler <code>scripts/fetch_commons.py</code> via the public MediaWiki API,
+one car per photo; author, licence and URL of every file are kept in <code>data/external/*/metadata.csv</code>. We used Commons rather than Stanford Cars / CompCars
+because those sets contain almost none of the 2022–2026 Chinese models that dominate Tashkent today.</p>
+<p><b>Labelling.</b> Each photo goes through the detector (<code>scripts/extract_crops.py</code>), which saves one crop + mask per car. Own crops were labelled by hand
+(brand from the badge; colour as a person would name it in daylight); crops with an unreadable badge were shown as a contact sheet and labelled by the team
+(48 ambiguous cars on 27 Oct), unidentifiable / tiny / blurry cars were left out, as were crops showing faces. Commons crops take the brand from the
+Commons category; colour from the file's colour category when present (2,351 Commons crops have no colour label and are used for brand only).
+Noisy Commons files (interiors, logos, old joint-venture models, trucks) are removed by filename rules and by detector class/confidence.
+Labels: <code>data/labels.csv</code>, one line per car.</p>
+<p><b>Split.</b> Grouped, leakage-free: own photos are split by <i>source photo</i> (30% of photos to validation, so two crops of one photo never sit on both sides);
+Commons by file (15%). Result: 4,468 train / 858 validation crops (123 own). Final test-day models are retrained on train + validation.</p>
+
+<div class="cols">
+<table>
+<tr><th>Brand</th><th>Own</th><th>Commons</th><th>Total</th></tr>
+<tr><td>Chevrolet</td><td>245</td><td>194</td><td>439</td></tr>
+<tr><td>BYD</td><td>53</td><td>167</td><td>220</td></tr>
+<tr><td>BMW</td><td>5</td><td>196</td><td>201</td></tr>
+<tr><td>Kia</td><td>14</td><td>187</td><td>201</td></tr>
+<tr><td>Changan</td><td>9</td><td>188</td><td>197</td></tr>
+<tr><td>Volkswagen</td><td>2</td><td>190</td><td>192</td></tr>
+<tr><td>Zeekr</td><td>8</td><td>184</td><td>192</td></tr>
+<tr><td>Hyundai</td><td>2</td><td>188</td><td>190</td></tr>
+<tr><td>Leapmotor</td><td>11</td><td>178</td><td>189</td></tr>
+<tr><td>Li Auto</td><td>7</td><td>181</td><td>188</td></tr>
+<tr><td>Aion</td><td>1</td><td>184</td><td>185</td></tr>
+</table>
+<table>
+<tr><th>Brand</th><th>Own</th><th>Commons</th><th>Total</th></tr>
+<tr><td>Dongfeng</td><td>3</td><td>182</td><td>185</td></tr>
+<tr><td>Nissan</td><td>1</td><td>183</td><td>184</td></tr>
+<tr><td>Mercedes-Benz</td><td>0</td><td>183</td><td>183</td></tr>
+<tr><td>Exeed</td><td>0</td><td>183</td><td>183</td></tr>
+<tr><td>Geely</td><td>0</td><td>182</td><td>182</td></tr>
+<tr><td>Daewoo</td><td>15</td><td>165</td><td>180</td></tr>
+<tr><td>Toyota</td><td>0</td><td>178</td><td>178</td></tr>
+<tr><td>Hongqi</td><td>6</td><td>164</td><td>170</td></tr>
+<tr><td>Jetour</td><td>1</td><td>166</td><td>167</td></tr>
+<tr><td>Voyah</td><td>3</td><td>163</td><td>166</td></tr>
+<tr><td>AITO</td><td>6</td><td>159</td><td>165</td></tr>
+</table>
+<table>
+<tr><th>Brand</th><th>Own</th><th>Commons</th><th>Total</th></tr>
+<tr><td>Haval</td><td>0</td><td>163</td><td>163</td></tr>
+<tr><td>Deepal</td><td>4</td><td>141</td><td>145</td></tr>
+<tr><td>Chery</td><td>6</td><td>121</td><td>127</td></tr>
+<tr><td>Lada</td><td>3</td><td>120</td><td>123</td></tr>
+<tr><td>JAC</td><td>0</td><td>123</td><td>123</td></tr>
+<tr><td>Omoda</td><td>0</td><td>117</td><td>117</td></tr>
+<tr><td>Tank</td><td>0</td><td>87</td><td>87</td></tr>
+<tr><td>Jaecoo</td><td>0</td><td>76</td><td>76</td></tr>
+<tr><td colspan="4" class="small" style="text-align:left">Own only: Xiaomi 6, Porsche 5, GAC 4,<br>Tesla, Stelato, Denza, GWM, Seres 2 each,<br>Avatr, Genesis, Venucia 1 each</td></tr>
+<tr><th>Total</th><th>433</th><th>4,893</th><th>5,326</th></tr>
+</table>
+<table>
+<tr><th>Colour</th><th>Own</th><th>Commons</th><th>Total</th></tr>
+<tr><td>white</td><td>192</td><td>910</td><td>1,102</td></tr>
+<tr><td>grey/silver</td><td>68</td><td>503</td><td>571</td></tr>
+<tr><td>black</td><td>147</td><td>386</td><td>533</td></tr>
+<tr><td>blue</td><td>6</td><td>334</td><td>340</td></tr>
+<tr><td>red</td><td>7</td><td>182</td><td>189</td></tr>
+<tr><td>brown/beige</td><td>7</td><td>78</td><td>85</td></tr>
+<tr><td>yellow/orange</td><td>0</td><td>85</td><td>85</td></tr>
+<tr><td>green</td><td>6</td><td>64</td><td>70</td></tr>
+<tr><td>no label</td><td>0</td><td>2,351</td><td>2,351</td></tr>
+</table>
+</div>
+<figure><img src="figures/samples.jpg" style="width:78%"><figcaption>Sample crops produced by the detector, with their labels (own Tashkent photos and Wikimedia Commons).</figcaption></figure>
+
+<h2 class="pb">3. Architecture</h2>
+<svg viewBox="0 0 760 175" width="100%" xmlns="http://www.w3.org/2000/svg" font-family="Segoe UI, Arial" font-size="11">
+<defs><marker id="a" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#333"/></marker></defs>
+<g stroke="#333" fill="#f3f6fb">
+<rect x="5" y="62" width="95" height="46" rx="5"/><rect x="128" y="52" width="150" height="66" rx="5"/>
+<rect x="318" y="8" width="215" height="72" rx="5" fill="#e9f4ea"/><rect x="318" y="96" width="215" height="72" rx="5" fill="#fbf0e4"/>
+<rect x="575" y="62" width="180" height="46" rx="5"/></g>
+<g stroke="#333" marker-end="url(#a)"><line x1="100" y1="85" x2="126" y2="85"/><line x1="278" y1="72" x2="316" y2="44"/><line x1="278" y1="98" x2="316" y2="130"/>
+<line x1="533" y1="44" x2="573" y2="76"/><line x1="533" y1="132" x2="573" y2="96"/></g>
+<text x="52" y="82" text-anchor="middle" font-weight="600">Phone photo</text><text x="52" y="97" text-anchor="middle">(any size)</text>
+<text x="203" y="70" text-anchor="middle" font-weight="600">YOLO11s-seg (COCO)</text><text x="203" y="85" text-anchor="middle">car/bus/truck, conf ≥ 0.5,</text>
+<text x="203" y="99" text-anchor="middle">area ≥ 1 % of photo</text><text x="203" y="113" text-anchor="middle">→ crop (+8 % pad) + mask</text>
+<text x="425" y="25" text-anchor="middle" font-weight="600">Brand: DINOv2 ViT-S/14</text><text x="425" y="40" text-anchor="middle">letterbox 224 px → [CLS ‖ mean patch] 768-d</text>
+<text x="425" y="55" text-anchor="middle">→ MLP head (LN→1024→GELU→drop→41)</text><text x="425" y="70" text-anchor="middle">+ mirror test-time averaging</text>
+<text x="425" y="113" text-anchor="middle" font-weight="600">Colour: masked body pixels</text><text x="425" y="128" text-anchor="middle">HSV + Lab histograms/percentiles,</text>
+<text x="425" y="143" text-anchor="middle">whole mask + lower body band (100-d)</text><text x="425" y="158" text-anchor="middle">→ gradient-boosted trees (8 classes)</text>
+<text x="665" y="82" text-anchor="middle" font-weight="600">List, left → right</text><text x="665" y="97" text-anchor="middle">"BYD white; Chevrolet grey"</text>
+</svg>
+<p><b>Multi-car strategy: detector + per-car classifier.</b> Scoring is per car and every extra prediction costs a point, so we need exactly one prediction per
+car and explicit control over which cars are reported. A COCO-pretrained YOLO11s-seg (used as-is, not a car-brand model) finds the cars; small or
+low-confidence detections are dropped (thresholds in <code>configs/default.yaml</code>).</p>
+<p><b>Brand: DINOv2 ViT-S/14 (self-supervised ViT, 21.6 M parameters), trained by us in two stages.</b> Crops are letterboxed (padded, not centre-cropped, because
+cars are wide) to 224 px. Embedding = CLS token concatenated with the mean of the patch tokens (768-d), the standard DINOv2 linear-probe recipe.
+<i>Stage A</i>: backbone frozen, features cached once (original + mirrored), only the MLP head is trained (0.83 M parameters, 13 s).
+<i>Stage B</i>: the last 4 of 12 transformer blocks + final norm are fine-tuned together with the head (7.9 M trainable parameters) on augmented images;
+the frozen first 8 blocks run without gradients so this fits a 4 GB GPU. Stage B replaces stage A only if it is better on validation.</p>
+<p><b>Colour: our own non-neural model.</b> DINOv2 is trained with colour-jitter augmentation, so its features are partly colour-blind; a separate model on
+explicit colour statistics is more reliable and easy to explain. Only pixels inside the (eroded) YOLO mask are used, so road, sky and other cars do not leak in.
+Windows, tyres and shadows are dark in every car, so features are computed twice — on the whole mask and on its lower-middle band (doors, mostly paint):
+saturation-weighted hue histogram of coloured pixels (18 bins), saturation and value histograms (8+8), colourful-pixel fraction, Lab mean/std/percentiles.
+A HistGradientBoosting classifier (class-balanced, own photos weighted ×3) maps the 100 features to the 8 colours.</p>
+<p><b>Size and speed.</b> YOLO11s-seg 10.1 M + DINOv2 21.6 M + head 0.8 M parameters; colour model ≈ 10 MB of trees.
+About 1 s per photo on a GTX 1650 laptop GPU, a few seconds on CPU, fully offline (all weights in the repository).</p>
+<p><b>Why this design.</b> DINOv2 features are strong for fine-grained, few-shot recognition, which suits ~100–200 cars per brand; ViT-S fits our 4 GB GPU.
+Stage A gives a working baseline in seconds; stage B is the improvement that has to beat it. We also compared heads on the same frozen features (table below):
+the MLP clearly beats logistic regression, kNN and gradient boosting (XGBoost, CatBoost, LightGBM). Trees split on one feature at a time, which suits
+hand-made tabular features (we do use them for colour) but not dense 768-d embeddings in which the information is spread over many dimensions.</p>
+<table>
+<tr><th>Head on frozen DINOv2 features (26 Oct split, 788 val crops)</th><th>Val acc.</th><th>Own photos</th><th>Macro-F1</th><th>Train time</th></tr>
+<tr><td>MLP head (ours)</td><td><b>0.666</b></td><td>0.774</td><td><b>0.651</b></td><td>11 s</td></tr>
+<tr><td>LightGBM</td><td>0.543</td><td>0.736</td><td>0.531</td><td>282 s</td></tr>
+<tr><td>XGBoost</td><td>0.524</td><td>0.717</td><td>0.508</td><td>211 s</td></tr>
+<tr><td>CatBoost</td><td>0.520</td><td>0.774</td><td>0.507</td><td>297 s</td></tr>
+<tr><td>Logistic regression</td><td>0.494</td><td>0.717</td><td>0.478</td><td>2 s</td></tr>
+<tr><td>kNN (k = 10, cosine)</td><td>0.473</td><td>0.717</td><td>0.461</td><td>0 s</td></tr>
+</table>
+
+<h2>4. Training</h2>
+<ul>
+<li><b>Loss:</b> cross-entropy with label smoothing 0.1, weighted per sample: inverse square root of the class frequency (rare brands are not drowned out) × 3 for own Tashkent photos (they match test conditions).</li>
+<li><b>Stage A:</b> AdamW, lr 1e-3, weight decay 0.05, cosine schedule, 100 epochs, batch 256, dropout 0.5, hidden 1024. Augmentation: horizontal mirror (cached). 13 s after a one-off 3 min feature extraction.</li>
+<li><b>Stage B:</b> AdamW, lr 2e-5 for the backbone blocks and 3e-4 for the head (warm-started from stage A), 1 warm-up epoch then cosine, 8 epochs, batch 32, mixed precision (fp16).
+Augmentation: random 85–100 % sub-crop (detector box jitter), mirror, perspective (p = 0.3), colour jitter, 5 % greyscale, Gaussian blur (p = 0.3, phone photos of a screen are soft).
+<span class="todo">[time per epoch / total]</span>.</li>
+<li><b>Colour:</b> HistGradientBoosting, 400 iterations, lr 0.05, 31 leaves, L2 1.0, balanced classes, own photos ×3. Trains in seconds.</li>
+<li><b>Hardware:</b> laptop, NVIDIA GTX 1650 4 GB, 16 GB RAM, Windows 11, Python 3.11, PyTorch 2.11 + CUDA 12.6, timm, Ultralytics.</li>
+</ul>
+
+<h2>5. Evaluation</h2>
+<table>
+<tr><th>Validation (858 crops, 123 own)</th><th>All</th><th>Own Tashkent photos</th><th>Commons</th></tr>
+<tr><td>Brand, stage A (frozen + MLP)</td><td>0.668</td><td>0.748</td><td>0.654</td></tr>
+<tr class="todo"><td>Brand, stage B (fine-tuned last 4 blocks)</td><td>[ ]</td><td>[ ]</td><td>[ ]</td></tr>
+<tr><td>Colour (504 colour-labelled crops)</td><td>0.780</td><td>0.732</td><td>0.795</td></tr>
+</table>
+<p><b>Colour per class (F1):</b> red 0.92, green 0.89, white 0.88, black 0.80, yellow 0.72, blue 0.66, grey 0.60, brown 0.30. Grey/silver is confused with white
+(bright reflections) and with black (shadows, evening photos); brown/beige is rare (85 cars) and sits between grey, white and yellow.</p>
+<figure><img src="figures/brand_confusion_stageA.png" style="width:74%"><figcaption>Row-normalised brand confusion matrix, stage A, validation split (numbers are counts).</figcaption></figure>
+
+<h3>Error analysis</h3>
+<p><b>Best brands</b> (F1 ≥ 0.85): BMW, Tank, Zeekr, Deepal, Li Auto, Jaecoo — each has a very distinctive front (kidney grille, boxy Tank body, Zeekr light bar,
+Li Auto's full-width lamp). <b>Classic pairs</b> are confused as expected: Daewoo ↔ Chevrolet (the same Nexia/Matiz/Gentra bodies with a different badge — the badge is
+a few pixels at 224 px), Kia ↔ Hyundai (shared platforms), Mercedes ↔ Daewoo/Chevrolet in old Commons photos. On own photos the largest error is
+Daewoo → Chevrolet. Toyota, Hyundai and Kia (F1 ≈ 0.40) suffer from very different model generations under one badge.</p>
+<p><b>Chinese brands.</b> Half of the test is Chinese brands, and they are the hardest part. (1) <i>Group families look alike</i>: Chery, Jetour, Exeed, Omoda and Jaecoo
+are all Chery Group; Haval and Tank are Great Wall; Changan, Deepal and Avatr are Changan; Dongfeng and Voyah; Geely and Zeekr. Shared platforms, lamps and
+proportions make Haval → Jetour, Geely → Dongfeng and Chery → Jetour/Exeed our most frequent Chinese confusions; Haval (0.38), Geely (0.40), Chery (0.43) and JAC (0.29)
+are our weakest brands. (2) <i>Generic modern SUV design</i>: from the side or rear, many 2023–2025 crossovers differ mainly in the badge and lamp signature.
+(3) <i>Data</i>: most Chinese-brand examples come from Commons (photographed in China, often older facelifts), while our own photos contain only 1–11 cars
+for most Chinese brands and none for Geely, Haval, JAC, Exeed, Omoda, Jaecoo, Tank. Our second photo session (27 Oct) targeted this gap and added
+the first local examples of Zeekr, Leapmotor, Li Auto, AITO, Hongqi, Chery and Xiaomi. (4) Brands seen only 1–6 times (Xiaomi, GAC, Denza, Stelato, Avatr…)
+cannot be learnt yet; on test day they will receive a wrong brand but can still earn the colour share. Stage B targets (1)–(2): fine-tuning lets the
+backbone attend to badges, grilles and lamp shapes instead of generic body shape.</p>
+<p><b>Own phone-camera tests.</b> <span class="todo">[fill in after the rehearsal: N photos of cars shown on a screen, photographed with the phone, transferred and predicted;
+time per photo; how many cars right for brand / colour; extra predictions].</span> On four of our street photos the full pipeline took 0.5–1.8 s per photo.</p>
+
+<h2>6. How to run on test day</h2>
+<pre>git clone https://github.com/FirdavsJurakulov/CSAI_midterm.git &amp;&amp; cd CSAI_midterm
+python -m venv .venv &amp;&amp; .venv\Scripts\activate &amp;&amp; pip install -r requirements.txt   (done before class)
+python -m carbrand.predict incoming/photo.jpg</pre>
+<ol style="margin:2px 0 5px; padding-left:18px">
+<li>Photograph the screen with the phone; send the photo to the laptop (Telegram Saved Messages / cable) into <code>incoming/</code>.</li>
+<li>Run the command above; it prints e.g. <code>photo.jpg: BYD white; Chevrolet grey</code> (cars left to right) in about 1–2 s and saves an annotated copy in <code>runs/predict/</code>.</li>
+<li>Copy the printed list to the answer sheet. No internet is needed: every weight file is loaded from <code>weights/</code>.</li>
+</ol>
+
+<h2>7. Reflection and AI-use statement</h2>
+<p><b>With two more weeks</b> we would (1) photograph a few hundred more cars per Chinese brand in Tashkent, especially Haval, Geely, Chery, Jetour, Exeed, Omoda/Jaecoo and JAC,
+for which we have no or almost no own photos, and the newer brands (Xiaomi, GAC, Denza, Avatr); (2) fine-tune at 336 px or train a second-stage classifier on a
+zoomed badge/grille region so the badge becomes readable; (3) tune the detector thresholds on a set of real multi-car test-style photos taken off a screen;
+(4) label colour for the Commons crops that have none and collect more beige/brown and grey cars.</p>
+<p><b>AI use.</b> We used <b>Claude Code (Anthropic)</b> as a coding assistant throughout the project: to propose and discuss the architecture, write and debug the
+Python code (crop extraction, Wikimedia Commons crawler, training, colour model, inference script), suggest first-pass labels for our own crops (every label was
+checked and the 48 ambiguous cars were labelled by us), run the training, and draft this report, which we then edited. All design decisions, data collection,
+final labels and the results were reviewed by us, and we can explain every part of the pipeline. No AI tools are used during the live test.
+<span class="todo">[edit if you used other tools]</span></p>
+<p class="small"><b>Data credit:</b> Wikimedia Commons contributors (individual authors and licences listed per file in <code>data/external/*/metadata.csv</code>).
+Pretrained weights: DINOv2 (Oquab et al., 2023, Meta AI; via timm), YOLO11 (Ultralytics, COCO).</p>
+</body></html>
